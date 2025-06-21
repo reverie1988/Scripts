@@ -1,0 +1,20 @@
+// 调试专用脚本
+console.log("🔍 调试信息开始 ================");
+console.log(`请求URL: ${$request.url}`);
+console.log("请求头:", JSON.stringify($request.headers, null, 2));
+console.log("环境变量:", JSON.stringify($environment, null, 2));
+
+const authKey = Object.keys($request.headers).find(k => 
+    k.toLowerCase().includes("authori-zation")
+);
+
+if (authKey) {
+    const token = $request.headers[authKey];
+    $notify("✅ 调试模式-提取成功", $request.url, token);
+    console.log("提取到的Token:", token);
+} else {
+    $notify("❌ 调试模式-未找到Token", $request.url, "检查请求头");
+    console.log("未找到authori-zation头");
+}
+
+$done();
