@@ -1,5 +1,5 @@
 // [mitm] m.aihoge.com
-// [rewrite_local] ^https:\/\/m\.aihoge\.com\/api\/publichy\/client\/activity\/info\?source=wechat url script-response-body https://raw.githubusercontent.com/reverie1988/Scripts/main/DCTX.js
+// [rewrite_local] ^https:\/\/m\.aihoge\.com\/api\/publichy\/client\/activity\/info\?source=wechat url script-response-body https://raw.githubusercontent.com/reverie1988/Scripts/main/QX/DCTX.js
 
 // 存储键名（避免冲突）
 const STORAGE_KEY = 'member_extractor_last_data_v2';
