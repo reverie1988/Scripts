@@ -26,7 +26,7 @@ if ($request.method === 'GET' &&
             if (typeof $notify !== 'undefined') {
                 $notify("🎯 Access-Token 已捕获", 
                        "点击查看详情", 
-                       token.substring(0, 16) + "...");
+                       token
             } else {
                 console.log("ℹ️ 通知API不可用，请查看日志获取完整token");
             }
