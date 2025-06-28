@@ -1,3 +1,4 @@
+// 
 // [mitm] n*.sentezhenxuan.com
 // [rewrite_local] ^https:\/\/n\d+\.sentezhenxuan\.com\/api\/video\/list\?page=\d+&limit=\d+&status=\d+&source=\d+&isXn=\d+ url script-response-body https://raw.githubusercontent.com/reverie1988/Scripts/refs/heads/main/QX/YYZH.js
 
