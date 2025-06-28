@@ -1,56 +1,53 @@
-// 重写规则名称：稳定提取Member数据
+// 重写规则名称：Member数据稳定提取
 // 匹配URL：^https?:\/\/m\.aihoge\.com\/api\/publichy\/client\/activity\/info\?source=wechat
 
-function getMemberDataStable() {
+function stableMemberExtractor() {
     // 调试日志
-    console.log(`[Member提取] 请求URL: ${$request.url}`);
+    console.log(`[Member提取] 启动处理: ${$request.url}`);
     
-    // 获取所有header的精确键名（解决大小写问题）
+    // 获取精确header键名
     const headers = $request.headers;
-    const headerKeys = Object.keys(headers);
-    console.log(`[Member提取] 实际Header键名: ${headerKeys.join(', ')}`);
+    const exactMemberKey = Object.keys(headers).find(k => k.toLowerCase() === 'member');
     
-    // 精确查找member键（保持原样大小写）
-    let memberKey = headerKeys.find(key => key.toLowerCase() === 'member');
-    
-    if (!memberKey) {
-        console.log('[Member提取] 错误: 未找到任何形式的member键');
-        $notify('❌ Member提取失败', 'Header检查', '未找到member键\n\n完整Headers:\n' + JSON.stringify(headers, null, 2));
+    if (!exactMemberKey) {
+        console.log('[Member提取] 致命错误: 未找到member键');
+        $notify('❌ 配置错误', 'member键不存在', '请联系脚本开发者');
         return;
     }
     
-    const memberValue = headers[memberKey];
-    console.log(`[Member提取] 找到member键: "${memberKey}" 值长度: ${memberValue ? memberValue.length : 'null'}`);
+    const memberValue = headers[exactMemberKey];
+    const valueLength = memberValue ? memberValue.length : 0;
+    console.log(`[Member提取] 状态: key="${exactMemberKey}" 长度=${valueLength}`);
     
+    // 空值处理
     if (!memberValue || memberValue.trim() === '') {
-        console.log('[Member提取] 错误: member值为空');
-        $notify('❌ Member值为空', '会话可能已过期', '请重新登录后重试');
+        console.log('[Member提取] 会话异常: member值为空');
+        $notify('⚠️ 会话已过期', '请重新登录', '检测到空member值\n\n可能原因:\n1. 登录状态失效\n2. 服务器限制\n3. 网络切换');
         return;
     }
     
+    // 验证JSON格式
     try {
-        // 直接使用原始member字符串（保持格式）
-        const notificationMsg = `ℹ️ 原始Member数据:\n\n${memberValue}`;
-        
-        $notify(
-            '✅ 成功提取Member数据', 
-            `Key: ${memberKey}`, 
-            notificationMsg,
-            {
-                'copy': memberValue,
-                'media-url': 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f4dc.png'
-            }
-        );
-        
-        // 存储原始数据
-        $prefs.setValueForKey(memberValue, 'last_member_data');
-        
-    } catch (error) {
-        console.log(`[Member提取] 解析错误: ${error}`);
-        $notify('❌ 处理Member数据失败', '错误详情', error.message);
+        JSON.parse(memberValue);
+    } catch (e) {
+        console.log('[Member提取] 数据异常: 无效JSON格式');
+        $notify('❌ 数据损坏', 'member格式错误', e.message);
+        return;
     }
+    
+    // 成功处理
+    $notify(
+        '✅ Member数据', 
+        `长度: ${valueLength}字符`, 
+        memberValue,
+        {
+            'copy': memberValue,
+            'media-url': 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f4d1.png'
+        }
+    );
+    $prefs.setValueForKey(memberValue, 'last_member_data');
 }
 
 // 执行
-getMemberDataStable();
+stableMemberExtractor();
 $done({});
