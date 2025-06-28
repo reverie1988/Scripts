@@ -1,55 +1,71 @@
-// 重写规则名称：Member数据稳定单次推送
+// 重写规则名称：Member数据终极稳定版
 // 匹配URL：^https?:\/\/m\.aihoge\.com\/api\/publichy\/client\/activity\/info\?source=wechat
 
-function stableMemberExtraction() {
-    // 调试日志
-    console.log('[Member提取] 启动请求处理');
+// 替代MD5的简单哈希函数
+function simpleHash(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash |= 0; // 转换为32位整数
+    }
+    return hash.toString();
+}
+
+function rockSolidMemberExtractor() {
+    // 调试标记
+    const debugTag = '[Member终极版]';
     
     try {
-        // 1. 安全获取headers
-        if (!$request || !$request.headers) {
-            console.log('[Member提取] 错误: 无效请求对象');
+        // 1. 基础验证
+        if (typeof $request === 'undefined') {
+            console.log(`${debugTag} 错误: 无$request对象`);
             return;
         }
         
-        // 2. 查找member头（兼容大小写）
-        const headers = $request.headers;
-        const memberKey = Object.keys(headers).find(k => k.toLowerCase() === 'member');
+        if (!$request.headers) {
+            console.log(`${debugTag} 错误: 无headers对象`);
+            return;
+        }
+        
+        // 2. 查找member头（兼容各种大小写）
+        const headerKeys = Object.keys($request.headers);
+        const memberKey = headerKeys.find(k => k.toLowerCase() === 'member');
         
         if (!memberKey) {
-            console.log('[Member提取] 调试: 请求头不包含member');
+            console.log(`${debugTag} 调试: 未找到member头`);
             return;
         }
         
-        const memberValue = headers[memberKey];
+        const memberValue = $request.headers[memberKey];
         
-        // 3. 空值检查
-        if (!memberValue || typeof memberValue !== 'string' || memberValue.trim() === '') {
-            console.log('[Member提取] 忽略: member值为空');
+        // 3. 严格空值检查
+        if (typeof memberValue !== 'string' || memberValue.trim() === '') {
+            console.log(`${debugTag} 忽略: member值为空`);
             return;
         }
         
-        // 4. 验证JSON格式
+        // 4. JSON验证
         try {
             JSON.parse(memberValue);
         } catch (e) {
-            console.log('[Member提取] 错误: 无效JSON格式', e);
+            console.log(`${debugTag} 错误: 无效JSON`, e.message);
             return;
         }
         
-        // 5. MD5去重检查
-        const md5 = $text.MD5(memberValue);
-        const lastMD5 = $prefs.valueForKey('last_member_md5');
+        // 5. 去重检查（使用简单哈希替代MD5）
+        const currentHash = simpleHash(memberValue);
+        const lastHash = $prefs.valueForKey('last_member_hash');
         
-        if (md5 === lastMD5) {
-            console.log('[Member提取] 忽略: 数据未变化');
+        if (currentHash === lastHash) {
+            console.log(`${debugTag} 忽略: 数据未变化`);
             return;
         }
         
         // 6. 发送通知（仅在新数据时）
         $notify(
-            '🔄 会员数据更新', 
-            '点击通知复制完整数据', 
+            '🔔 会员数据更新', 
+            `长度: ${memberValue.length}字符`, 
             memberValue,
             {
                 'copy': memberValue,
@@ -57,19 +73,19 @@ function stableMemberExtraction() {
             }
         );
         
-        // 7. 存储当前状态
-        $prefs.setValueForKey(md5, 'last_member_md5');
-        console.log('[Member提取] 成功: 新数据已处理');
+        // 7. 存储状态
+        $prefs.setValueForKey(currentHash, 'last_member_hash');
+        console.log(`${debugTag} 成功: 已处理新数据`);
         
     } catch (error) {
-        console.log('[Member提取] 捕获全局异常:', error);
+        console.log(`${debugTag} 捕获顶级错误:`, error);
     }
 }
 
-// 执行入口
-if (typeof $request !== 'undefined') {
-    stableMemberExtraction();
+// 安全执行
+if (typeof $done === 'function') {
+    rockSolidMemberExtractor();
+    $done({});
 } else {
-    console.log('[Member提取] 错误: 未检测到$request对象');
+    console.log('[Member终极版] 环境异常: 无$done函数');
 }
-$done({});
