@@ -1,42 +1,58 @@
-// 重写规则名称：提取member数据并推送
+// 重写规则名称：提取并推送Member数据
 // 匹配URL：^https?:\/\/m\.aihoge\.com\/api\/publichy\/client\/activity\/info\?source=wechat
 
-$task.fetch({
-    url: $request.url,
-    method: $request.method,
-    headers: $request.headers,
-    body: $request.body
-}).then(response => {
+function getMemberData() {
     try {
-        // 获取member头数据
-        const memberHeader = response.headers['member'] || response.headers['Member'];
+        // 获取请求头
+        const headers = $request.headers;
+        
+        // 查找member头（不区分大小写）
+        const memberHeader = headers['member'] || headers['Member'] || headers['MEMBER'];
+        
         if (!memberHeader) {
-            throw new Error('未找到member头数据');
+            // 如果没有找到member头，列出所有请求头用于调试
+            const allHeaders = Object.entries(headers).map(([key, value]) => `${key}: ${value}`).join('\n');
+            $notify('⚠️ Member头未找到', '请检查请求头', `未发现member字段\n\n完整请求头:\n${allHeaders}`);
+            return;
         }
         
         // 解析JSON数据
         const memberData = JSON.parse(memberHeader);
         
+        // 验证必要字段
+        if (!memberData.id || !memberData.token) {
+            throw new Error('Member数据缺少必要字段');
+        }
+        
+        // 解码昵称（如果是URL编码）
+        const nickname = memberData.nick_name && memberData.nick_name.startsWith('%') 
+            ? decodeURIComponent(memberData.nick_name) 
+            : memberData.nick_name || '未知';
+        
         // 构造推送消息
-        let message = `🎯 成功提取会员数据\n`;
-        message += `👤 昵称: ${decodeURIComponent(memberData.nick_name)}\n`;
-        message += `📱 手机: ${memberData.mobile || '未绑定'}\n`;
-        message += `🆔 ID: ${memberData.id}\n`;
-        message += `🔑 Token: ${memberData.token.substring(0, 6)}...\n`;
-        message += `⏱ 过期时间: ${new Date(memberData.expire * 1000).toLocaleString()}`;
+        const message = `
+🎯 会员数据提取成功
+━━━━━━━━━━━━━━
+👤 昵称: ${nickname}
+📱 手机: ${memberData.mobile || '未绑定'}
+🆔 ID: ${memberData.id}
+🔐 Token: ${memberData.token.substring(0, 6)}******
+⏰ 过期时间: ${memberData.expire ? new Date(memberData.expire * 1000).toLocaleString() : '未知'}
+━━━━━━━━━━━━━━
+ℹ️ 数据已保存至本地
+        `;
         
         // 发送通知
-        $notify('会员数据提取成功', '', message);
+        $notify('✅ 会员数据提取', nickname, message.trim());
         
-        // 可选：将数据保存到持久化存储
-        $prefs.setValueForKey(JSON.stringify(memberData), 'last_member_data');
+        // 保存完整数据到持久化存储
+        $prefs.setValueForKey(JSON.stringify(memberData, null, 2), 'last_member_data');
         
-        $done({});
     } catch (error) {
-        $notify('提取member数据失败', '', error.message);
-        $done({});
+        $notify('❌ 处理Member数据失败', '错误详情', error.message);
     }
-}, reason => {
-    $notify('请求失败', '', reason.error);
-    $done({});
-});
+}
+
+// 执行主函数
+getMemberData();
+$done({});
