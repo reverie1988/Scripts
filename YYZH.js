@@ -1,5 +1,5 @@
-// [mitm] 
-// [rewrite_local] 
+// [mitm] n*.sentezhenxuan.com
+// [rewrite_local] ^https:\/\/n\d+\.sentezhenxuan\.com\/api\/video\/list\?page=\d+&limit=\d+&status=\d+&source=\d+&isXn=\d+ url script-response-body https://raw.githubusercontent.com/reverie1988/Scripts/refs/heads/main/YYZH.js
 
 console.log("🔍 调试信息开始 ================");
 console.log(`请求URL: ${$request.url}`);
