@@ -1,55 +1,42 @@
-// ==Quantumult X 响应体脚本==
-// 必须作为response-type脚本使用
-(() => {
-    // 环境检测
-    const isQX = typeof $response !== 'undefined';
-    if (!isQX) {
-        console.log("❌ 请确保脚本用于Quantumult X重写规则");
-        return;
-    }
+// 重写规则名称：提取member数据并推送
+// 匹配URL：^https?:\/\/m\.aihoge\.com\/api\/publichy\/client\/activity\/info\?source=wechat
 
-    console.log("🔍 开始处理请求...");
-    
-    // 获取请求头（兼容不同QX版本）
-    const headers = $request?.headers || $response?.headers || {};
-    console.log("📋 请求头:", JSON.stringify(headers, null, 2));
-
-    // 查找member字段（不区分大小写）
-    const memberKey = Object.keys(headers).find(k => 
-        k.toLowerCase() === 'member'
-    ) || 'member'; // 默认键名
-    
-    if (!headers[memberKey]) {
-        console.log("⚠️ 未找到member数据");
-        return $done({});
-    }
-
+$task.fetch({
+    url: $request.url,
+    method: $request.method,
+    headers: $request.headers,
+    body: $request.body
+}).then(response => {
     try {
-        // 处理数据
-        const rawData = headers[memberKey];
-        const decodedData = decodeURIComponent(rawData);
-        const member = JSON.parse(decodedData);
-        
-        console.log("✅ 解析结果:", JSON.stringify(member, null, 2));
-        
-        // 发送通知（带错误捕获）
-        try {
-            $notification.post(
-                '会员数据提取',
-                `用户: ${member.nick_name || '未知'}`,
-                `Token: ${member.token?.slice(0, 6)}...`
-            );
-        } catch (e) {
-            console.log("⚠️ 通知发送失败:", e);
+        // 获取member头数据
+        const memberHeader = response.headers['member'] || response.headers['Member'];
+        if (!memberHeader) {
+            throw new Error('未找到member头数据');
         }
         
-        // 存储数据
-        $persistentStore.write(decodedData, 'member_cache');
+        // 解析JSON数据
+        const memberData = JSON.parse(memberHeader);
         
-    } catch (e) {
-        console.log("❌ 数据处理失败:", e);
-        console.log("原始数据:", headers[memberKey]);
+        // 构造推送消息
+        let message = `🎯 成功提取会员数据\n`;
+        message += `👤 昵称: ${decodeURIComponent(memberData.nick_name)}\n`;
+        message += `📱 手机: ${memberData.mobile || '未绑定'}\n`;
+        message += `🆔 ID: ${memberData.id}\n`;
+        message += `🔑 Token: ${memberData.token.substring(0, 6)}...\n`;
+        message += `⏱ 过期时间: ${new Date(memberData.expire * 1000).toLocaleString()}`;
+        
+        // 发送通知
+        $notify('会员数据提取成功', '', message);
+        
+        // 可选：将数据保存到持久化存储
+        $prefs.setValueForKey(JSON.stringify(memberData), 'last_member_data');
+        
+        $done({});
+    } catch (error) {
+        $notify('提取member数据失败', '', error.message);
+        $done({});
     }
-    
+}, reason => {
+    $notify('请求失败', '', reason.error);
     $done({});
-})();
+});
