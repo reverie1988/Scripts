@@ -1,7 +1,7 @@
 // 名称: Access-Token 提取器（完整显示）
 // 描述: 从目标API提取 access-token 并在通知中完整显示
 // 目标域名: msmarket.msx.digitalyili.com
-// 更新时间: 2025-06-29
+// 更新时间: 2025-06-29 、
 
 console.log("🛠️ 脚本开始执行...");
 
