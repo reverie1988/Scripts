@@ -1,43 +1,55 @@
-// 重写规则名称：Member数据单次推送
+// 重写规则名称：Member数据稳定单次推送
 // 匹配URL：^https?:\/\/m\.aihoge\.com\/api\/publichy\/client\/activity\/info\?source=wechat
 
-// 存储最后成功提取的member数据MD5，用于去重
-const LAST_MEMBER_MD5 = 'last_member_md5';
-
-function extractMemberOnce() {
+function stableMemberExtraction() {
+    // 调试日志
+    console.log('[Member提取] 启动请求处理');
+    
     try {
-        // 获取请求头
+        // 1. 安全获取headers
+        if (!$request || !$request.headers) {
+            console.log('[Member提取] 错误: 无效请求对象');
+            return;
+        }
+        
+        // 2. 查找member头（兼容大小写）
         const headers = $request.headers;
-        const memberValue = headers['member'] || headers['Member'] || headers['MEMBER'];
+        const memberKey = Object.keys(headers).find(k => k.toLowerCase() === 'member');
         
-        // 检查member值是否存在且有效
-        if (!memberValue || memberValue.trim() === '') {
-            console.log('[Member提取] 忽略空值请求');
+        if (!memberKey) {
+            console.log('[Member提取] 调试: 请求头不包含member');
             return;
         }
         
-        // 计算当前member数据的MD5
-        const currentMD5 = $text.MD5(memberValue);
-        const lastMD5 = $prefs.valueForKey(LAST_MEMBER_MD5);
+        const memberValue = headers[memberKey];
         
-        // 检查是否与上次相同
-        if (currentMD5 === lastMD5) {
-            console.log('[Member提取] 忽略重复数据');
+        // 3. 空值检查
+        if (!memberValue || typeof memberValue !== 'string' || memberValue.trim() === '') {
+            console.log('[Member提取] 忽略: member值为空');
             return;
         }
         
-        // 验证JSON格式
+        // 4. 验证JSON格式
         try {
             JSON.parse(memberValue);
         } catch (e) {
-            console.log('[Member提取] 无效JSON格式:', e);
+            console.log('[Member提取] 错误: 无效JSON格式', e);
             return;
         }
         
-        // 发送通知（仅在新数据时）
+        // 5. MD5去重检查
+        const md5 = $text.MD5(memberValue);
+        const lastMD5 = $prefs.valueForKey('last_member_md5');
+        
+        if (md5 === lastMD5) {
+            console.log('[Member提取] 忽略: 数据未变化');
+            return;
+        }
+        
+        // 6. 发送通知（仅在新数据时）
         $notify(
-            '✅ Member数据更新', 
-            '点击复制完整数据', 
+            '🔄 会员数据更新', 
+            '点击通知复制完整数据', 
             memberValue,
             {
                 'copy': memberValue,
@@ -45,15 +57,19 @@ function extractMemberOnce() {
             }
         );
         
-        // 存储当前MD5
-        $prefs.setValueForKey(currentMD5, LAST_MEMBER_MD5);
-        console.log('[Member提取] 新数据已存储并通知');
+        // 7. 存储当前状态
+        $prefs.setValueForKey(md5, 'last_member_md5');
+        console.log('[Member提取] 成功: 新数据已处理');
         
     } catch (error) {
-        console.log('[Member提取] 全局错误:', error);
+        console.log('[Member提取] 捕获全局异常:', error);
     }
 }
 
-// 执行
-extractMemberOnce();
+// 执行入口
+if (typeof $request !== 'undefined') {
+    stableMemberExtraction();
+} else {
+    console.log('[Member提取] 错误: 未检测到$request对象');
+}
 $done({});
