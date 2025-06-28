@@ -1,4 +1,6 @@
-// 调试专用脚本
+// [mitm] 
+// [rewrite_local] 
+
 console.log("🔍 调试信息开始 ================");
 console.log(`请求URL: ${$request.url}`);
 console.log("请求头:", JSON.stringify($request.headers, null, 2));
