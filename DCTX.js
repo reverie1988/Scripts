@@ -1,57 +1,49 @@
-// 重写规则名称：精确格式推送Member数据
+// 重写规则名称：调试Member提取问题
 // 匹配URL：^https?:\/\/m\.aihoge\.com\/api\/lotteryhy\/api\/client\/cj\/send\/pak
 
-function pushMemberDataWithExactFormat() {
+function debugMemberExtraction() {
+    console.log(`[调试] 开始处理请求: ${$request.url}`);
+    
+    // 记录所有请求头
+    const headers = $request.headers;
+    console.log(`[调试] 所有请求头keys: ${Object.keys(headers).join(', ')}`);
+    
+    // 检查member头
+    const memberHeader = getMemberHeader(headers);
+    
+    if (!memberHeader) {
+        console.log('[调试] 未找到member头，完整headers:', JSON.stringify(headers, null, 2));
+        $notify('❌ Member提取失败', '调试信息已记录', '请查看QX日志获取详细信息');
+        return;
+    }
+    
+    console.log('[调试] 找到member头:', memberHeader);
+    
     try {
-        // 获取请求头
-        const headers = $request.headers;
-        
-        // 查找member头（不区分大小写）
-        const memberHeader = headers['member'] || headers['Member'] || headers['MEMBER'];
-        
-        if (!memberHeader) {
-            $notify('❌ 提取失败', '', '未在请求头中找到member字段');
-            return;
-        }
-        
-        // 直接使用原始member字符串，确保格式完全一致
-        const memberJson = memberHeader.trim();
-        
-        // 验证JSON格式
-        JSON.parse(memberJson);
-        
-        // 解码昵称用于通知标题
-        let nickname = '未知用户';
-        try {
-            const memberData = JSON.parse(memberJson);
-            nickname = memberData.nick_name && memberData.nick_name.startsWith('%') 
-                ? decodeURIComponent(memberData.nick_name) 
-                : memberData.nick_name || '未知用户';
-        } catch (e) {
-            nickname = '未知用户';
-        }
-        
-        // 发送通知（使用原始member字符串）
-        $notify(
-            `📌 Member数据 [${nickname}]`,
-            '',
-            memberJson,
-            {
-                // 点击通知后复制全部内容到剪贴板
-                'copy': memberJson,
-                // 使用文档图标
-                'media-url': 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f4dc.png'
-            }
-        );
-        
-        // 保存到持久化存储（原始格式）
-        $prefs.setValueForKey(memberJson, 'last_member_data');
-        
-    } catch (error) {
-        $notify('❌ 处理Member数据失败', '', error.message);
+        const memberData = JSON.parse(memberHeader);
+        $notify('✅ Member数据', '', JSON.stringify(memberData, null, 2));
+    } catch (e) {
+        console.log('[调试] 解析member数据失败:', e);
+        $notify('❌ Member解析失败', '', e.message);
     }
 }
 
-// 执行主函数
-pushMemberDataWithExactFormat();
+// 更全面的header获取方法
+function getMemberHeader(headers) {
+    const possibleKeys = [
+        'member', 'Member', 'MEMBER',
+        'x-member', 'X-Member', 'X-MEMBER',
+        'user-member', 'User-Member', 'USER-MEMBER'
+    ];
+    
+    for (const key of possibleKeys) {
+        if (headers[key]) {
+            console.log(`[调试] 从key ${key} 找到member头`);
+            return headers[key];
+        }
+    }
+    return null;
+}
+
+debugMemberExtraction();
 $done({});
