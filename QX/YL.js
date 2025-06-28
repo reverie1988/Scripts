@@ -1,7 +1,6 @@
-// 名称: Access-Token 提取器（完整显示）
-// 描述: 从目标API提取 access-token 并在通知中完整显示
-// 目标域名: msmarket.msx.digitalyili.com
-// 更新时间: 2025-06-29 、
+// 名称: Access-Token 提取器
+// [mitm] msmarket.msx.digitalyili.com
+// [rewrite_local] ^https:\/\/msmarket\.msx\.digitalyili\.com\/gateway\/api\/auth\/account\/user\/info -url script-response-header https://raw.githubusercontent.com/reverie1988/Scripts/refs/heads/main/QX/YL.js
 
 console.log("🛠️ 脚本开始执行...");
 
