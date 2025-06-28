@@ -1,7 +1,7 @@
-// 重写规则名称：提取并推送原始Member数据
+// 重写规则名称：精确格式推送Member数据
 // 匹配URL：^https?:\/\/m\.aihoge\.com\/api\/lotteryhy\/api\/client\/cj\/send\/pak
 
-function extractAndNotifyRawMemberData() {
+function pushExactMemberFormat() {
     try {
         // 获取请求头
         const headers = $request.headers;
@@ -27,23 +27,24 @@ function extractAndNotifyRawMemberData() {
             nickname = memberData.nick_name || '未知用户';
         }
         
-        // 将member数据转换为格式化的JSON字符串
-        const rawMemberJson = JSON.stringify(memberData, null, 2);
+        // 生成完全紧凑的JSON字符串（无空格换行）
+        const compactJson = JSON.stringify(memberData);
         
-        // 发送通知（显示原始JSON数据）
+        // 发送通知（完全按照您要求的格式）
         $notify(
             `📌 Member数据 [${nickname}]`,
             '',
-            rawMemberJson,
+            compactJson,
             {
-                // 可选：点击通知后复制全部内容到剪贴板
-                'copy': rawMemberJson,
+                // 点击通知后复制全部内容到剪贴板
+                'copy': compactJson,
+                // 使用文档图标
                 'media-url': 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f4dc.png'
             }
         );
         
-        // 保存到持久化存储
-        $prefs.setValueForKey(rawMemberJson, 'last_member_data');
+        // 保存到持久化存储（同样使用紧凑格式）
+        $prefs.setValueForKey(compactJson, 'last_member_data');
         
     } catch (error) {
         $notify('❌ 处理Member数据失败', '', error.message);
@@ -51,5 +52,5 @@ function extractAndNotifyRawMemberData() {
 }
 
 // 执行主函数
-extractAndNotifyRawMemberData();
+pushExactMemberFormat();
 $done({});
