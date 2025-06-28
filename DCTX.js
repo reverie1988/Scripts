@@ -1,72 +1,74 @@
-// ==Quantumult X重写脚本==
-// @name Member信息提取器
-// @description 从m.aihoge.com的API请求中提取member信息
-// @version 1.1
+// ==Quantumult X 重写脚本==
+// @name Member数据提取器
+// @description 从m.aihoge.com请求中提取member信息并推送
+// @version 2.0
 
-console.log("🔍 [MemberExtract] 调试模式启动 ================");
-
-// 调试输出完整请求信息
-console.log("🌐 请求URL:", $request.url);
-console.log("📝 请求方法:", $request.method);
-console.log("📋 请求头:", JSON.stringify($request.headers, null, 2));
-
-// 提取member字段（兼容大小写）
-const memberHeader = Object.keys($request.headers).find(key => 
-    key.toLowerCase() === 'member'
-);
-
-if (memberHeader) {
-    const memberData = $request.headers[memberHeader];
+(function() {
+    'use strict';
     
-    // 深度解码JSON数据（处理URL编码的nick_name）
+    // 调试信息头
+    console.log("🚀===== Member提取脚本启动 =====");
+    
+    // 1. 验证执行环境
+    if (typeof $request === 'undefined') {
+        console.log("❌ 错误：未在Quantumult X环境中运行");
+        return;
+    }
+    
+    // 2. 提取member数据（兼容大小写）
+    const memberKey = Object.keys($request.headers).find(k => 
+        k.toLowerCase() === 'member'
+    );
+    
+    if (!memberKey) {
+        console.log("⚠️ 未找到member请求头");
+        $notification.post("提取失败", "请求头缺少member字段", $request.url);
+        return $done();
+    }
+    
+    const rawMember = $request.headers[memberKey];
+    console.log("📦 原始member数据:", rawMember);
+    
+    // 3. 数据处理
     try {
-        const decodedMember = JSON.parse(
-            memberData.replace(/%([0-9A-F]{2})/g, (match, p1) => 
-                String.fromCharCode('0x' + p1)
-            )
+        // 处理URL编码的nick_name
+        const decodedMember = rawMember.replace(/%([0-9A-F]{2})/g, (_, p1) => 
+            String.fromCharCode('0x' + p1)
         );
         
-        console.log("✅ 提取到的member数据:", JSON.stringify(decodedMember, null, 2));
+        const memberObj = JSON.parse(decodedMember);
+        console.log("✅ 解析后的member对象:", JSON.stringify(memberObj, null, 2));
         
-        // 格式化推送内容
-        const pushContent = `
-🆔 ID: ${decodedMember.id}
-📱 手机: ${decodedMember.mobile || '未绑定'}
-🔑 Token: ${decodedMember.token.slice(0, 6)}...${decodedMember.token.slice(-6)}
-⏳ 过期: ${new Date(decodedMember.expire * 1000).toLocaleString()}
-📛 昵称: ${decodedMember.nick_name}
+        // 4. 格式化推送内容
+        const notifyContent = `
+👤 用户ID: ${memberObj.id}
+📱 手机号: ${memberObj.mobile || "未绑定"}
+🔑 主Token: ${memberObj.token.slice(0, 6)}...${memberObj.token.slice(-4)}
+🛡️ 设备标识: ${memberObj.mark}
+⏰ 过期时间: ${new Date(memberObj.expire * 1000).toLocaleString()}
         `.trim();
         
-        // 发送通知（带超链接）
+        // 5. 发送通知
         $notification.post(
-            '🎯 Member信息提取成功', 
-            `来源: ${decodedMember.source}`,
-            pushContent,
-            { 'open-url': $request.url }
+            "🎯 会员信息提取成功", 
+            `来源: ${memberObj.source}`, 
+            notifyContent,
+            { "open-url": $request.url }
         );
         
-        // 持久化存储（供其他脚本使用）
-        $persistentStore.write(
-            JSON.stringify(decodedMember),
-            'member_auth_data'
-        );
+        // 6. 数据持久化存储
+        $persistentStore.write(decodedMember, "latest_member_data");
+        console.log("💾 数据已保存到持久化存储");
         
     } catch (e) {
-        console.log("❌ JSON解析失败:", e);
+        console.log("❌ 解析错误:", e);
         $notification.post(
-            '⚠️ Member解析错误',
-            '请检查数据格式',
-            memberData.slice(0, 100) + '...'
+            "⚠️ Member数据解析失败",
+            e.message,
+            rawMember.slice(0, 100) + "..."
         );
     }
-} else {
-    console.log("❌ 未找到member请求头");
-    $notification.post(
-        '⚠️ Member提取失败',
-        $request.url,
-        '请求头中未找到member字段'
-    );
-}
-
-console.log("🔚 [MemberExtract] 脚本执行结束 ================");
-$done();
+    
+    console.log("🏁===== 脚本执行完成 =====");
+    $done();
+})();
