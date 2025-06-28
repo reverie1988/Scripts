@@ -1,3 +1,5 @@
+// 项目: 大潮
+// 名称: member 提取器
 // [mitm] m.aihoge.com
 // [rewrite_local] ^https:\/\/m\.aihoge\.com\/api\/publichy\/client\/activity\/info\?source=wechat url script-response-body https://raw.githubusercontent.com/reverie1988/Scripts/main/QX/DCTX.js
 
