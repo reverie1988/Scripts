@@ -1,91 +1,89 @@
-// 重写规则名称：Member数据终极稳定版
+// 重写规则名称：Member数据精确单次推送
 // 匹配URL：^https?:\/\/m\.aihoge\.com\/api\/publichy\/client\/activity\/info\?source=wechat
 
-// 替代MD5的简单哈希函数
-function simpleHash(str) {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-        const char = str.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash |= 0; // 转换为32位整数
-    }
-    return hash.toString();
-}
+// 存储键名（避免冲突）
+const STORAGE_KEY = 'member_extractor_last_data_v2';
 
-function rockSolidMemberExtractor() {
-    // 调试标记
-    const debugTag = '[Member终极版]';
+// 原子操作锁（防止并行请求重复处理）
+let isProcessing = false;
+
+function atomicMemberExtractor() {
+    // 如果正在处理，直接返回
+    if (isProcessing) {
+        console.log('[Member原子版] 跳过: 已有处理中的请求');
+        return;
+    }
+    
+    isProcessing = true;
     
     try {
-        // 1. 基础验证
-        if (typeof $request === 'undefined') {
-            console.log(`${debugTag} 错误: 无$request对象`);
+        // 1. 基础环境检查
+        if (typeof $request === 'undefined' || !$request.headers) {
+            console.log('[Member原子版] 错误: 无效请求对象');
             return;
         }
-        
-        if (!$request.headers) {
-            console.log(`${debugTag} 错误: 无headers对象`);
-            return;
-        }
-        
-        // 2. 查找member头（兼容各种大小写）
-        const headerKeys = Object.keys($request.headers);
-        const memberKey = headerKeys.find(k => k.toLowerCase() === 'member');
+
+        // 2. 精确查找member头
+        const headers = $request.headers;
+        const memberKey = Object.keys(headers).find(k => k.toLowerCase() === 'member');
         
         if (!memberKey) {
-            console.log(`${debugTag} 调试: 未找到member头`);
+            console.log('[Member原子版] 调试: 未找到member头');
             return;
         }
+
+        const memberValue = headers[memberKey];
         
-        const memberValue = $request.headers[memberKey];
-        
-        // 3. 严格空值检查
+        // 3. 严格空值验证
         if (typeof memberValue !== 'string' || memberValue.trim() === '') {
-            console.log(`${debugTag} 忽略: member值为空`);
+            console.log('[Member原子版] 忽略: 空值请求');
             return;
         }
-        
-        // 4. JSON验证
+
+        // 4. 验证JSON格式
+        let parsedData;
         try {
-            JSON.parse(memberValue);
+            parsedData = JSON.parse(memberValue);
         } catch (e) {
-            console.log(`${debugTag} 错误: 无效JSON`, e.message);
+            console.log('[Member原子版] 错误: 无效JSON', e.message);
             return;
         }
+
+        // 5. 获取上次存储的完整数据（而不仅是哈希）
+        const lastData = $prefs.valueForKey(STORAGE_KEY);
         
-        // 5. 去重检查（使用简单哈希替代MD5）
-        const currentHash = simpleHash(memberValue);
-        const lastHash = $prefs.valueForKey('last_member_hash');
-        
-        if (currentHash === lastHash) {
-            console.log(`${debugTag} 忽略: 数据未变化`);
+        // 6. 数据比对（全等比较）
+        if (lastData === memberValue) {
+            console.log('[Member原子版] 忽略: 数据完全相同');
             return;
         }
-        
-        // 6. 发送通知（仅在新数据时）
+
+        // 7. 发送通知（确保只推送一次）
         $notify(
-            '🔔 会员数据更新', 
-            `长度: ${memberValue.length}字符`, 
+            '🌟 会员数据', 
+            `ID: ${parsedData.id || '未知'}`, 
             memberValue,
             {
                 'copy': memberValue,
-                'media-url': 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f4d1.png'
+                'media-url': 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f465.png'
             }
         );
-        
-        // 7. 存储状态
-        $prefs.setValueForKey(currentHash, 'last_member_hash');
-        console.log(`${debugTag} 成功: 已处理新数据`);
-        
+
+        // 8. 存储完整数据（用于精确比对）
+        $prefs.setValueForKey(memberValue, STORAGE_KEY);
+        console.log('[Member原子版] 成功: 已存储新数据');
+
     } catch (error) {
-        console.log(`${debugTag} 捕获顶级错误:`, error);
+        console.log('[Member原子版] 捕获异常:', error);
+    } finally {
+        isProcessing = false;
     }
 }
 
-// 安全执行
+// 执行入口
 if (typeof $done === 'function') {
-    rockSolidMemberExtractor();
+    atomicMemberExtractor();
     $done({});
 } else {
-    console.log('[Member终极版] 环境异常: 无$done函数');
+    console.log('[Member原子版] 环境异常: 缺少$done');
 }
