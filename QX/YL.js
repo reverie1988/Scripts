@@ -1,3 +1,4 @@
+// 项目: 伊利
 // 名称: Access-Token 提取器
 // [mitm] msmarket.msx.digitalyili.com
 // [rewrite_local] ^https:\/\/msmarket\.msx\.digitalyili\.com\/gateway\/api\/auth\/account\/user\/info -url script-response-header https://raw.githubusercontent.com/reverie1988/Scripts/refs/heads/main/QX/YL.js
