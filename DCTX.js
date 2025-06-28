@@ -1,24 +1,19 @@
 const url = $request.url;
 const method = $request.method;
 const headers = $request.headers;
-const member = headers['member'];
 
+console.log("ℹ️ 请求URL: " + url);
+console.log("ℹ️ 请求头: " + JSON.stringify(headers, null, 2));
+
+const member = headers['member'] || headers['Member'];
 if (member) {
-    // 解码URL编码的nick_name
-    const decodedMember = member.replace(/%([0-9A-F]{2})/g, (match, p1) => {
-        return String.fromCharCode('0x' + p1);
-    });
-
-    // 发送推送通知
-    $notification.post('Member信息提取', '', decodedMember);
-
-    // 可选：将member保存到持久化存储
+    const decodedMember = decodeURIComponent(member);
+    console.log("✅ 解码后的member: " + decodedMember);
+    $notification.post('Member信息提取', '提取成功', decodedMember);
     $persistentStore.write(decodedMember, 'member_data');
-
-    // 可选：记录到日志
-    console.log('提取到的member信息: ' + decodedMember);
 } else {
-    console.log('未找到member字段');
+    console.log("❌ 未找到member字段");
+    $notification.post('Member信息提取', '提取失败', '未找到member字段');
 }
 
 $done({});
