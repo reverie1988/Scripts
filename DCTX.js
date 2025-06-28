@@ -1,7 +1,7 @@
 // 重写规则名称：精确格式推送Member数据
 // 匹配URL：^https?:\/\/m\.aihoge\.com\/api\/lotteryhy\/api\/client\/cj\/send\/pak
 
-function pushExactMemberFormat() {
+function pushMemberDataWithExactFormat() {
     try {
         // 获取请求头
         const headers = $request.headers;
@@ -14,37 +14,38 @@ function pushExactMemberFormat() {
             return;
         }
         
-        // 解析JSON数据
-        const memberData = JSON.parse(memberHeader);
+        // 直接使用原始member字符串，确保格式完全一致
+        const memberJson = memberHeader.trim();
+        
+        // 验证JSON格式
+        JSON.parse(memberJson);
         
         // 解码昵称用于通知标题
         let nickname = '未知用户';
         try {
+            const memberData = JSON.parse(memberJson);
             nickname = memberData.nick_name && memberData.nick_name.startsWith('%') 
                 ? decodeURIComponent(memberData.nick_name) 
                 : memberData.nick_name || '未知用户';
         } catch (e) {
-            nickname = memberData.nick_name || '未知用户';
+            nickname = '未知用户';
         }
         
-        // 生成完全紧凑的JSON字符串（无空格换行）
-        const compactJson = JSON.stringify(memberData);
-        
-        // 发送通知（完全按照您要求的格式）
+        // 发送通知（使用原始member字符串）
         $notify(
             `📌 Member数据 [${nickname}]`,
             '',
-            compactJson,
+            memberJson,
             {
                 // 点击通知后复制全部内容到剪贴板
-                'copy': compactJson,
+                'copy': memberJson,
                 // 使用文档图标
                 'media-url': 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f4dc.png'
             }
         );
         
-        // 保存到持久化存储（同样使用紧凑格式）
-        $prefs.setValueForKey(compactJson, 'last_member_data');
+        // 保存到持久化存储（原始格式）
+        $prefs.setValueForKey(memberJson, 'last_member_data');
         
     } catch (error) {
         $notify('❌ 处理Member数据失败', '', error.message);
@@ -52,5 +53,5 @@ function pushExactMemberFormat() {
 }
 
 // 执行主函数
-pushExactMemberFormat();
+pushMemberDataWithExactFormat();
 $done({});
