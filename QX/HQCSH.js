@@ -1,84 +1,69 @@
-// == 终极 Cookie 提取脚本（带完整调试）==
-(() => {
-    // 调试模式开关（设为 true 显示完整请求信息）
-    const DEBUG_MODE = true;
+// QX脚本：提取Cookie并推送通知
+// 脚本名称: Extract Cookie and Notify
+// 匹配URL: https://channel.cheryfs.cn/archer/activity-api/common/visibility/batch
+// 触发时机: response-body
+
+const method = $request.method;
+const url = $request.url;
+const headers = $request.headers;
+
+if (method === 'POST' && url.includes('/archer/activity-api/common/visibility/batch')) {
+    // 提取Cookie和其他重要信息
+    const cookie = headers['Cookie'] || '';
+    const accountId = headers['accountId'] || '';
+    const tenantId = headers['tenantId'] || '';
+    const wxappid = headers['wxappid'] || '';
+    const activityId = headers['activityId'] || '';
     
-    // 1. 获取完整请求信息
-    const dumpRequest = () => {
-        return {
-            url: $request?.url,
-            method: $request?.method,
-            headers: $request?.headers,
-            body: $request?.body
-        };
-    };
-
-    // 2. 调试输出
-    if (DEBUG_MODE) {
-        console.log("[Debug] 完整请求结构:\n" + JSON.stringify(dumpRequest(), null, 2));
-    }
-
-    // 3. 检查 Cookie 是否存在（兼容大小写）
-    const headers = $request?.headers || {};
-    const cookie = headers['Cookie'] || headers['cookie'] || '';
+    // 构造消息内容
+    const message = `
+    🍪 Cookie提取成功 🍪
+    URL: ${url}
+    Cookie: ${cookie}
+    AccountId: ${accountId}
+    TenantId: ${tenantId}
+    WxAppId: ${wxappid}
+    ActivityId: ${activityId}
+    `;
     
-    if (!cookie) {
-        const errorMsg = "[Error] 请求头中未找到 Cookie 字段";
-        console.log(errorMsg);
-        
-        // 尝试用更原始的方式获取 Cookie（某些特殊环境）
-        const rawHeaders = $request?.rawHeaders || [];
-        for (let i = 0; i < rawHeaders.length; i += 2) {
-            if (rawHeaders[i].toLowerCase() === 'cookie') {
-                const foundCookie = rawHeaders[i + 1];
-                console.log("[Notice] 通过 rawHeaders 找到 Cookie:", foundCookie);
-                processCookie(foundCookie);
-                return;
-            }
-        }
-        
-        console.log("[Debug] 所有请求头键名:", Object.keys(headers));
-        return $done();
-    }
-
-    // 4. 处理 Cookie 的主逻辑
-    function processCookie(cookieStr) {
-        // 增强版正则（支持更多变体）
-        const regex = /(uid[^=]*)=([^;]+)/i;
-        const match = cookieStr.match(regex);
-        
-        if (match) {
-            const [_, name, value] = match;
-            const successMsg = `[Success] 提取到动态 Cookie:\n${name}=${value}`;
-            console.log(successMsg);
+    // 由于不支持$notification，使用其他方式推送
+    // 方法1: 使用$notify的替代方案（如果部分支持）
+    try {
+        if (typeof $notify !== 'undefined') {
+            $notify('Cookie提取成功', '', message);
+        } else {
+            // 方法2: 使用console.log输出到日志
+            console.log(message);
             
-            // 环境兼容的输出方式
-            try {
-                // 尝试所有可能的通知方式
-                if (typeof $notification !== 'undefined') {
-                    $notification.post("Cookie 提取成功", `名称: ${name}`, value);
-                } else if (typeof $notify !== 'undefined') {
-                    $notify("Cookie 提取成功", `名称: ${name}`, value);
-                } else {
-                    console.log(successMsg);
-                }
-                
-                // 尝试写入剪贴板（iOS 捷径兼容）
-                if (typeof $clipboard !== 'undefined') {
-                    $clipboard.setString(value);
-                    console.log("[Notice] 已复制到剪贴板");
-                }
-            } catch (e) {
-                console.log("[Notice] 通知/剪贴板功能不可用");
-            }
-            
-            return $done({ cookieName: name, cookieValue: value });
+            // 方法3: 使用HTTP请求发送到webhook
+            // 需要替换为你的webhook地址
+            const webhookUrl = 'https://your-webhook-url.com';
+            $task.fetch({
+                url: webhookUrl,
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    title: 'Cookie提取通知',
+                    content: message
+                })
+            }).then(response => {
+                console.log('Webhook通知发送成功');
+            }, reason => {
+                console.log('Webhook通知发送失败: ' + reason.error);
+            });
         }
-        
-        console.log("[Error] Cookie 中未找到 uid 开头的键值");
-        console.log("[Debug] 原始 Cookie:", cookieStr);
+    } catch (e) {
+        console.log('通知发送失败: ' + e);
     }
-
-    // 执行主逻辑
-    processCookie(cookie);
-})();
+    
+    // 保存到持久化存储
+    $prefs.setValueForKey(cookie, 'extracted_cookie');
+    $prefs.setValueForKey(accountId, 'extracted_accountId');
+    
+    // 返回原始响应
+    $done({});
+} else {
+    $done({});
+}
