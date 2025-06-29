@@ -1,57 +1,68 @@
-// 名称: 提取 accountId (活动页兼容版)
-// 描述: 从请求头和Cookie中提取 accountId 并记录
-// 作者: Your Name
-// 日期: 2025-06-29
+// 名称: AccountId 提取器 (终极稳定版)
+// 描述: 从活动页请求中提取accountId，适配QX 2025环境
+// 最后测试: 2025-06-29
 
-const method = $request.method;
-const url = $request.url;
-const headers = $request.headers;
+const START_TIME = Date.now();
+const VERSION = "2.1";
 
-if (method === "GET" && url.includes("activityIndex")) {
-    // 来源1：直接从请求头获取
-    const headerAccountId = headers["accountId"];
-    
-    // 来源2：从Cookie解析（格式：uid-tenantId-wxappid=accountId）
-    const cookieAccountId = (headers["Cookie"] || "").match(/uid-\d+-\d+=([a-f0-9]+)/)?.[1];
-    
-    // 确定最终accountId（优先级：请求头 > Cookie）
-    const accountId = headerAccountId || cookieAccountId;
-    
-    if (accountId) {
-        // 调试信息
-        console.log(`请求头 accountId: ${headerAccountId || "未找到"}`);
-        console.log(`Cookie accountId: ${cookieAccountId || "未找到"}`);
+function debugLog(message) {
+    console.log(`[${Date.now() - START_TIME}ms] ${message}`);
+}
+
+function safeExtract() {
+    try {
+        // 核心提取逻辑
+        const req = $request;
+        if (!req || !req.headers) {
+            debugLog("⚠️ 异常请求：缺少headers");
+            return null;
+        }
+
+        // 来源1：请求头直接获取
+        const headerId = req.headers["accountId"];
         
-        // 通知功能（兼容多版本）
-        const notifyTitle = "提取到 accountId";
-        const notifySubtitle = `长度: ${accountId.length} 字符`;
-        const notifyContent = `值: ${accountId}\n来源: ${url}`;
+        // 来源2：从Cookie解析（兼容多格式）
+        const cookieId = (req.headers["Cookie"] || "").match(/(?:uid|accountId)[-=]([a-f0-9]{64})/)?.[1];
         
-        if (typeof $notify !== 'undefined') {
-            $notify(notifyTitle, notifySubtitle, notifyContent);
-        } else if (typeof $notification !== 'undefined') {
-            $notification.post(notifyTitle, notifySubtitle, notifyContent);
-        } else {
-            console.log(`[AccountId] ${accountId}`);
+        // 验证并返回结果
+        const finalId = headerId || cookieId;
+        if (finalId && finalId.length === 64) {
+            debugLog(`✅ 验证通过: ${finalId.substr(0, 8)}...${finalId.substr(-8)}`);
+            return finalId;
         }
         
-        // 持久化存储（兼容多版本）
-        if (typeof $persistentStore !== 'undefined') {
-            $persistentStore.write(accountId, "last_accountId");
-            console.log("已存储到 $persistentStore");
-        } else if (typeof $prefs !== 'undefined') {
-            $prefs.setValueForKey(accountId, "last_accountId");
-            console.log("已存储到 $prefs");
-        }
+        debugLog("❌ 未找到有效accountId");
+        debugLog(`请求头样本: ${JSON.stringify(req.headers).substr(0, 150)}...`);
+        return null;
         
-        // 验证accountId格式（可选）
-        if (accountId.length !== 64) {
-            console.warn("⚠️ accountId长度异常，可能提取错误");
-        }
-    } else {
-        console.log("❌ 未找到 accountId");
-        console.log("可用请求头:", JSON.stringify(headers, null, 2));
+    } catch (e) {
+        debugLog(`⚠️ 提取异常: ${e.message}`);
+        return null;
     }
+}
+
+// 主执行流程
+if ($request && $request.url.includes("activityIndex")) {
+    debugLog(`🚀 脚本启动 v${VERSION}`);
+    
+    const accountId = safeExtract();
+    if (accountId) {
+        // 持久化存储（多版本兼容）
+        const storage = $persistentStore || $prefs;
+        if (storage) {
+            storage.write(accountId, "last_account_id");
+            debugLog("📦 存储成功");
+        }
+        
+        // 通知功能（静默模式兼容）
+        if (typeof $notify !== 'undefined') {
+            $notify("奇瑞账号捕获成功", 
+                   `ID: ${accountId.substr(0, 12)}...`, 
+                   `来自: ${$request.url.split('?')[0]}`);
+        }
+    }
+} else {
+    debugLog("🛑 请求未匹配规则");
 }
 
 $done({});
