@@ -13,7 +13,7 @@ if (method === "GET" && url.includes("getLayout")) {
     if (accountId) {
         // 替代通知方案：使用 $notify 或直接记录到日志
         if (typeof $notify !== 'undefined') {
-            $notify("提取到 accountId", `accountId: ${accountId}`, `来自: ${url}`);
+            $notify("提取到 accountId", `accountId: ${accountId}`);
         } else {
             console.log(`[AccountId] 提取成功: ${accountId}`);
         }
