@@ -31,9 +31,9 @@ if (method === "GET" && url.includes("saveupdateAccount")) {
         
         // 通知方案
         if (typeof $notify !== 'undefined') {
-            $notify("提取到 accountId", `accountId: ${accountId}`, `来源: ${url}`);
+            $notify("提取到 accountId", `accountId: ${accountId}`);
         } else if (typeof $notification !== 'undefined') {
-            $notification.post("提取到 accountId", `accountId: ${accountId}`, `来源: ${url}`);
+            $notification.post("提取到 accountId", `accountId: ${accountId}`);
         } else {
             console.log(`[AccountId] 提取成功: ${accountId}`);
         }
