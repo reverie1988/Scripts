@@ -1,14 +1,10 @@
-// 带持久化存储的版本
+// 修正后的 accountId_notify.js
 const accountId = $request.headers['AccountId'] || $request.headers['accountId'];
-const savedId = $persistentStore.read("lastAccountId");
 
 if (accountId) {
-    if (accountId !== savedId) {
-        $persistentStore.write(accountId, "lastAccountId");
-        $notify("发现新 AccountID", "", accountId);
-    }
-    $done({});
+    $notify("AccountID 提取成功", "", `提取到的 AccountID: ${accountId}`);
 } else {
-    $notify("AccountID 提取失败", "", "检查请求头");
-    $done({});
+    $notify("AccountID 提取失败", "", "未找到 AccountID 字段");
 }
+
+$done({});
