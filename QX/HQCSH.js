@@ -1,54 +1,84 @@
-// 增强版 Cookie 提取脚本
+// == 终极 Cookie 提取脚本（带完整调试）==
 (() => {
-    // 获取请求头（兼容大小写）
+    // 调试模式开关（设为 true 显示完整请求信息）
+    const DEBUG_MODE = true;
+    
+    // 1. 获取完整请求信息
+    const dumpRequest = () => {
+        return {
+            url: $request?.url,
+            method: $request?.method,
+            headers: $request?.headers,
+            body: $request?.body
+        };
+    };
+
+    // 2. 调试输出
+    if (DEBUG_MODE) {
+        console.log("[Debug] 完整请求结构:\n" + JSON.stringify(dumpRequest(), null, 2));
+    }
+
+    // 3. 检查 Cookie 是否存在（兼容大小写）
     const headers = $request?.headers || {};
     const cookie = headers['Cookie'] || headers['cookie'] || '';
     
     if (!cookie) {
-        console.log("[Error] 请求头中未找到 Cookie");
-        // 兼容没有 $notification 的环境
-        try {
-            $notification?.post("Cookie 提取失败", "请求头中未找到 Cookie", "");
-        } catch (e) {
-            console.log("[Notice] 当前环境不支持 $notification API");
+        const errorMsg = "[Error] 请求头中未找到 Cookie 字段";
+        console.log(errorMsg);
+        
+        // 尝试用更原始的方式获取 Cookie（某些特殊环境）
+        const rawHeaders = $request?.rawHeaders || [];
+        for (let i = 0; i < rawHeaders.length; i += 2) {
+            if (rawHeaders[i].toLowerCase() === 'cookie') {
+                const foundCookie = rawHeaders[i + 1];
+                console.log("[Notice] 通过 rawHeaders 找到 Cookie:", foundCookie);
+                processCookie(foundCookie);
+                return;
+            }
         }
+        
+        console.log("[Debug] 所有请求头键名:", Object.keys(headers));
         return $done();
     }
-    
-    // 动态匹配 uid- 开头的 Cookie（更健壮的正则）
-    const regex = /(uid-[a-zA-Z0-9\-_]+)=([^;]+)/i;
-    const match = cookie.match(regex);
-    
-    if (match) {
-        const [fullMatch, cookieName, cookieValue] = match;
-        console.log(`[Success] 提取到动态 Cookie:\n${cookieName}=${cookieValue}`);
+
+    // 4. 处理 Cookie 的主逻辑
+    function processCookie(cookieStr) {
+        // 增强版正则（支持更多变体）
+        const regex = /(uid[^=]*)=([^;]+)/i;
+        const match = cookieStr.match(regex);
         
-        // 兼容性通知处理
-        const notify = (title, subtitle, body) => {
+        if (match) {
+            const [_, name, value] = match;
+            const successMsg = `[Success] 提取到动态 Cookie:\n${name}=${value}`;
+            console.log(successMsg);
+            
+            // 环境兼容的输出方式
             try {
-                $notification?.post(title, subtitle, body);
-            } catch {
-                console.log(`[Notice] ${title}: ${subtitle}`);
+                // 尝试所有可能的通知方式
+                if (typeof $notification !== 'undefined') {
+                    $notification.post("Cookie 提取成功", `名称: ${name}`, value);
+                } else if (typeof $notify !== 'undefined') {
+                    $notify("Cookie 提取成功", `名称: ${name}`, value);
+                } else {
+                    console.log(successMsg);
+                }
+                
+                // 尝试写入剪贴板（iOS 捷径兼容）
+                if (typeof $clipboard !== 'undefined') {
+                    $clipboard.setString(value);
+                    console.log("[Notice] 已复制到剪贴板");
+                }
+            } catch (e) {
+                console.log("[Notice] 通知/剪贴板功能不可用");
             }
-        };
-        
-        notify("Cookie 提取成功", `名称: ${cookieName}\n值: ${cookieValue}`, "");
-        
-        // 持久化存储（可选）
-        try {
-            $persistentStore?.write(cookieValue, "latest_uid_cookie");
-        } catch (e) {
-            console.log("[Notice] 持久化存储不可用");
+            
+            return $done({ cookieName: name, cookieValue: value });
         }
         
-        return $done({ cookieName, cookieValue });
+        console.log("[Error] Cookie 中未找到 uid 开头的键值");
+        console.log("[Debug] 原始 Cookie:", cookieStr);
     }
-    
-    console.log("[Error] 未找到 uid- 开头的 Cookie");
-    try {
-        $notification?.post("Cookie 提取失败", "未找到 uid- 开头的 Cookie", "");
-    } catch {
-        console.log("[Notice] 未找到目标 Cookie");
-    }
-    $done();
+
+    // 执行主逻辑
+    processCookie(cookie);
 })();
