@@ -1,40 +1,41 @@
-// 使用Quantumult X脚本提取accountId并推送
+// 提取 accountId 并记录日志（兼容无 $notification 的环境）
 const method = $request.method;
 const url = $request.url;
 const headers = $request.headers;
 
+// 调试：记录请求基本信息
+console.log(`[Debug] 请求方法: ${method}, URL: ${url}`);
+
 if (method === 'GET' && url.includes('findPoint')) {
-    // 提取accountId
+    // 调试：输出所有请求头（确认 headers 存在）
+    console.log('[Debug] 请求头:', JSON.stringify(headers, null, 2));
+    
+    // 提取 accountId（兼容大小写）
     const accountId = headers['accountId'] || headers['Accountid'] || headers['ACCOUNTID'];
     
     if (accountId) {
         // 构造推送内容
-        const message = `提取到accountId: ${accountId}`;
-        const title = 'AccountID提取通知';
+        const message = `提取到 accountId: ${accountId}`;
+        const title = 'AccountID 提取通知';
         
-        // 使用其他方式推送（因为不支持$notification API）
-        // 方法1：使用$notify（如果可用）
+        // 方法1：尝试使用 $notify（如果存在）
         if (typeof $notify !== 'undefined') {
             $notify(title, '', message);
+            console.log(`[Success] 已通过 $notify 推送: ${message}`);
         } 
-        // 方法2：使用console.log输出（可以在日志中查看）
+        // 方法2：仅记录日志（确保日志可见）
         else {
-            console.log(`[AccountID提取] ${message}`);
+            console.log(`[Success] ${title} - ${message}`);
             
-            // 方法3：使用HTTP请求发送到推送服务（需要自行实现）
-            // 例如使用Bark、Server酱等推送服务
-            // $task.fetch({ url: `https://api.push.com/send?title=${title}&body=${message}` });
-            
-            // 方法4：将结果存储在持久化存储中供其他脚本使用
+            // 可选：将 accountId 存储到持久化变量
             $persistentStore.write(accountId, 'extracted_accountId');
+            console.log(`[Info] accountId 已保存到持久化存储`);
         }
-        
-        // 返回修改后的请求（如果需要）
-        $done({});
     } else {
-        console.log('未找到accountId请求头');
-        $done({});
+        console.log('[Error] 未找到 accountId 请求头');
     }
 } else {
-    $done({});
+    console.log('[Info] 请求未匹配条件，跳过处理');
 }
+
+$done({});
