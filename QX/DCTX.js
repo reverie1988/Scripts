@@ -1,8 +1,3 @@
-// 项目: 大潮
-// 名称: member 提取器
-// [mitm] m.aihoge.com
-// [rewrite_local] ^https:\/\/m\.aihoge\.com\/api\/publichy\/client\/activity\/info\?source=wechat url script-response-body https://raw.githubusercontent.com/reverie1988/Scripts/main/QX/DCTX.js
-
 // 存储键名（避免冲突）
 const STORAGE_KEY = 'member_extractor_last_data_v2';
 
@@ -60,20 +55,21 @@ function atomicMemberExtractor() {
             return;
         }
 
-        // 7. 发送通知（确保只推送一次）
+        // 7. 自动复制到剪贴板
         $notify(
             '🌟 会员数据', 
             `ID: ${parsedData.id || '未知'}`, 
-            memberValue,
+            '会员数据已自动复制到剪贴板',
             {
                 'copy': memberValue,
+                'auto-dismiss': 1.5,  // 1.5秒后自动关闭通知
                 'media-url': 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f465.png'
             }
         );
 
         // 8. 存储完整数据（用于精确比对）
         $prefs.setValueForKey(memberValue, STORAGE_KEY);
-        console.log('[Member原子版] 成功: 已存储新数据');
+        console.log('[Member原子版] 成功: 已存储新数据并复制到剪贴板');
 
     } catch (error) {
         console.log('[Member原子版] 捕获异常:', error);
