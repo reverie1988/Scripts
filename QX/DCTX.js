@@ -55,21 +55,24 @@ function atomicMemberExtractor() {
             return;
         }
 
-        // 7. 自动复制到剪贴板
+        // 7. 先复制到剪贴板
+        $clipboard(memberValue);
+        console.log('[Member原子版] 调试: 已复制到剪贴板');
+
+        // 8. 发送通知
         $notify(
             '🌟 会员数据', 
             `ID: ${parsedData.id || '未知'}`, 
             '会员数据已自动复制到剪贴板',
             {
-                'copy': memberValue,
-                'auto-dismiss': 1.5,  // 1.5秒后自动关闭通知
-                'media-url': 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f465.png'
+                'media-url': 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f465.png',
+                'auto-dismiss': 1.5
             }
         );
 
-        // 8. 存储完整数据（用于精确比对）
+        // 9. 存储完整数据（用于精确比对）
         $prefs.setValueForKey(memberValue, STORAGE_KEY);
-        console.log('[Member原子版] 成功: 已存储新数据并复制到剪贴板');
+        console.log('[Member原子版] 成功: 已存储新数据');
 
     } catch (error) {
         console.log('[Member原子版] 捕获异常:', error);
