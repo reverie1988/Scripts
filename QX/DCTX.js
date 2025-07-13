@@ -1,3 +1,8 @@
+// 项目: 大潮
+// 名称: member 提取器
+// [mitm] m.aihoge.com
+// [rewrite_local] ^https:\/\/m\.aihoge\.com\/api\/publichy\/client\/activity\/info\?source=wechat url script-response-body https://raw.githubusercontent.com/reverie1988/Scripts/main/QX/DCTX.js
+
 // 存储键名（避免冲突）
 const STORAGE_KEY = 'member_extractor_last_data_v2';
 
@@ -55,22 +60,18 @@ function atomicMemberExtractor() {
             return;
         }
 
-        // 7. 先复制到剪贴板
-        $clipboard(memberValue);
-        console.log('[Member原子版] 调试: 已复制到剪贴板');
-
-        // 8. 发送通知
+        // 7. 发送通知（确保只推送一次）
         $notify(
             '🌟 会员数据', 
             `ID: ${parsedData.id || '未知'}`, 
-            '会员数据已自动复制到剪贴板',
+            memberValue,
             {
-                'media-url': 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f465.png',
-                'auto-dismiss': 1.5
+                'copy': memberValue,
+                'media-url': 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f465.png'
             }
         );
 
-        // 9. 存储完整数据（用于精确比对）
+        // 8. 存储完整数据（用于精确比对）
         $prefs.setValueForKey(memberValue, STORAGE_KEY);
         console.log('[Member原子版] 成功: 已存储新数据');
 
