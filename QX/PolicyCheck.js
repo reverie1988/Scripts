@@ -1,5 +1,11 @@
 console.log("PolicyCheck start");
 
+/**
+ * Quantumult X 策略 / 流媒体检测
+ * 适配你的策略组命名：
+ * 家里内网、策略选择、GPT、Gemini、GitHub、YouTube、Netflix、Disney+、Telegram
+ */
+
 const POLICIES = {
   HOME: "家里内网",
   PROXY: "策略选择",
@@ -21,6 +27,15 @@ function flag(code) {
   if (code === "UK") code = "GB";
   if (code.length !== 2) return code;
   return code.replace(/./g, c => String.fromCodePoint(127397 + c.charCodeAt()));
+}
+
+function stripHtml(text) {
+  return String(text || "")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/br>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&");
 }
 
 function timeoutPromise(name, ms = TIMEOUT) {
@@ -52,11 +67,13 @@ function fetchWithPolicy(url, policy, extra = {}) {
 
 async function runCheck(name, fn) {
   console.log("Start check: " + name);
+
   try {
     const result = await Promise.race([
       fn(),
       timeoutPromise(name, TIMEOUT)
     ]);
+
     console.log("Finish check: " + name);
     return result;
   } catch (e) {
@@ -67,49 +84,73 @@ async function runCheck(name, fn) {
 
 async function checkHome() {
   const res = await fetchWithPolicy("http://192.168.31.1", POLICIES.HOME);
+
   if (res.statusCode >= 200 && res.statusCode < 500) {
     return `<b>家里内网: </b>连通 ➟ 192.168.31.1 ✅`;
   }
+
   return `<b>家里内网: </b>异常 ➟ HTTP ${res.statusCode} 🚫`;
 }
 
 async function checkProxy() {
   const res = await fetchWithPolicy("http://www.gstatic.com/generate_204", POLICIES.PROXY);
+
   if (res.statusCode === 204 || res.statusCode === 200) {
     return `<b>策略选择: </b>基础连通 ✅`;
   }
+
   return `<b>策略选择: </b>异常 ➟ HTTP ${res.statusCode} 🚫`;
 }
 
 async function checkGitHub() {
-  const res = await fetchWithPolicy("https://raw.githubusercontent.com/reverie1988/Scripts/main/QX/PolicyCheck.js", POLICIES.GITHUB);
+  const res = await fetchWithPolicy(
+    "https://raw.githubusercontent.com/reverie1988/Scripts/main/QX/PolicyCheck.js",
+    POLICIES.GITHUB
+  );
+
   if (res.statusCode === 200) {
     return `<b>GitHub: </b>可访问 ✅`;
   }
+
   return `<b>GitHub: </b>异常 ➟ HTTP ${res.statusCode} 🚫`;
 }
 
 async function checkTelegram() {
   const res = await fetchWithPolicy("https://telegram.org/", POLICIES.TELEGRAM);
+
   if (res.statusCode === 200) {
     return `<b>Telegram: </b>可访问 ✅`;
   }
+
   return `<b>Telegram: </b>异常 ➟ HTTP ${res.statusCode} 🚫`;
 }
 
 async function checkGPT() {
-  const trace = await fetchWithPolicy("https://chatgpt.com/cdn-cgi/trace", POLICIES.GPT);
   let region = "";
-  if (trace.statusCode === 200 && trace.body) {
-    const m = trace.body.match(/loc=([A-Z]{2})/);
-    if (m && m[1]) region = m[1];
+
+  try {
+    const trace = await fetchWithPolicy("https://chatgpt.com/cdn-cgi/trace", POLICIES.GPT);
+
+    if (trace.statusCode === 200 && trace.body) {
+      const m = trace.body.match(/loc=([A-Z]{2})/);
+      if (m && m[1]) region = m[1];
+    }
+  } catch (e) {
+    console.log("ChatGPT trace error: " + e);
   }
 
   const res = await fetchWithPolicy("https://chatgpt.com/", POLICIES.GPT, {
     redirection: false
   });
 
-  if (res.statusCode === 403 || res.statusCode === 451) {
+  const body = res.body || "";
+
+  if (
+    res.statusCode === 403 ||
+    res.statusCode === 451 ||
+    body.includes("unsupported_country") ||
+    body.includes("Sorry, you have been blocked")
+  ) {
     return `<b>ChatGPT: </b>未支持${region ? ` ➟ ${flag(region)} ${region}` : ""} 🚫`;
   }
 
@@ -185,7 +226,11 @@ async function checkDisney() {
     return `<b>Disney+: </b>未支持 🚫`;
   }
 
-  return `<b>Disney+: </b>可访问 🎉`;
+  let region = "";
+  const m = body.match(/Region:\s*([A-Za-z]{2})/);
+  if (m && m[1]) region = m[1].toUpperCase();
+
+  return `<b>Disney+: </b>可访问${region ? ` ➟ ${flag(region)} ${region}` : ""} 🎉`;
 }
 
 async function main() {
@@ -203,23 +248,32 @@ async function main() {
 
   const html = `
   <p style="text-align:center;font-family:-apple-system;font-size:large;">
-  <b>策略 / 流媒体检测</b><br>
-  --------------------------------------<br><br>
-  ${results.join("<br><br>")}
-  <br><br>--------------------------------------<br>
-  <font color="#CD5C5C">检测完成</font>
+    <b>策略 / 流媒体检测</b><br>
+    --------------------------------------<br><br>
+    ${results.join("<br><br>")}
+    <br><br>--------------------------------------<br>
+    <font color="#CD5C5C">检测完成</font>
   </p>`;
+
+  const plain = results.map(stripHtml).join("\n\n");
+
+  console.log("PolicyCheck done");
+
+  $notify("策略/流媒体检测", "检测完成", plain);
 
   $done({
     title: "策略/流媒体检测",
+    content: plain,
     htmlMessage: html
   });
 }
 
 main().catch(e => {
   console.log("Main error: " + e);
+
   $done({
     title: "策略/流媒体检测",
+    content: "检测异常：" + e,
     htmlMessage: `<p style="text-align:center;">检测异常：${e}</p>`
   });
 });
