@@ -1,5 +1,9 @@
 /******************************
- * Quantumult X 山东今日油价推送
+ * Quantumult X 威海今日油价推送
+ *
+ * 数据源：
+ * 汽车之家威海油价
+ * https://www.autohome.com.cn/oil/371000.html
  *
  * 输出格式：
  * 2026年4月26日 / 星期日 20:11
@@ -11,36 +15,21 @@
  * 98号汽油：¥10.03 / 升
  * 0号柴油：¥8.05 / 升
  *
- * 说明：这是山东省油价指导价，各加油站可能有优惠或浮动，请以实际油站挂牌价为准。
+ * 说明：这是山东威海油价指导价，各加油站可能有优惠或浮动，请以实际油站挂牌价为准。
  ******************************/
 
-console.log("ShandongOilPrice start");
+console.log("WeihaiOilPrice start");
 
 const CONFIG = {
-  TITLE: "山东今日油价",
-  PROVINCE: "山东",
+  TITLE: "威海今日油价",
+  CITY: "山东威海",
   TIMEOUT: 15000,
 
   SOURCES: [
     {
       name: "汽车之家油价",
-      url: "https://www.autohome.com.cn/oil/370000.html",
+      url: "https://www.autohome.com.cn/oil/371000.html",
       type: "text"
-    },
-    {
-      name: "汽油价格网",
-      url: "https://m.qiyoujiage.com/shandong.shtml",
-      type: "text"
-    },
-    {
-      name: "金投网油价",
-      url: "https://www.cngold.org/crude/shandong.html",
-      type: "text"
-    },
-    {
-      name: "全国油价表",
-      url: "https://www.iamwawa.cn/oilprice.html",
-      type: "table"
     }
   ]
 };
@@ -125,33 +114,33 @@ function pickPrice(text, oilType) {
 
   if (oilType === "92") {
     patterns = [
-      /92号汽油[^\d]{0,40}(\d+\.\d{1,2})/,
-      /92#汽油[^\d]{0,40}(\d+\.\d{1,2})/,
-      /92\s*[#号]?[^\d]{0,30}(\d+\.\d{1,2})/
+      /92号汽油[^\d]{0,50}(\d+\.\d{1,2})/,
+      /92#汽油[^\d]{0,50}(\d+\.\d{1,2})/,
+      /92\s*[#号]?[^\d]{0,40}(\d+\.\d{1,2})/
     ];
   }
 
   if (oilType === "95") {
     patterns = [
-      /95号汽油[^\d]{0,40}(\d+\.\d{1,2})/,
-      /95#汽油[^\d]{0,40}(\d+\.\d{1,2})/,
-      /95\s*[#号]?[^\d]{0,30}(\d+\.\d{1,2})/
+      /95号汽油[^\d]{0,50}(\d+\.\d{1,2})/,
+      /95#汽油[^\d]{0,50}(\d+\.\d{1,2})/,
+      /95\s*[#号]?[^\d]{0,40}(\d+\.\d{1,2})/
     ];
   }
 
   if (oilType === "98") {
     patterns = [
-      /98号汽油[^\d]{0,40}(\d+\.\d{1,2})/,
-      /98#汽油[^\d]{0,40}(\d+\.\d{1,2})/,
-      /98\s*[#号]?[^\d]{0,30}(\d+\.\d{1,2})/
+      /98号汽油[^\d]{0,50}(\d+\.\d{1,2})/,
+      /98#汽油[^\d]{0,50}(\d+\.\d{1,2})/,
+      /98\s*[#号]?[^\d]{0,40}(\d+\.\d{1,2})/
     ];
   }
 
   if (oilType === "0") {
     patterns = [
-      /0号柴油[^\d]{0,40}(\d+\.\d{1,2})/,
-      /0#柴油[^\d]{0,40}(\d+\.\d{1,2})/,
-      /柴油[^\d]{0,40}(\d+\.\d{1,2})/
+      /0号柴油[^\d]{0,50}(\d+\.\d{1,2})/,
+      /0#柴油[^\d]{0,50}(\d+\.\d{1,2})/,
+      /柴油[^\d]{0,50}(\d+\.\d{1,2})/
     ];
   }
 
@@ -175,23 +164,6 @@ function parseDate(text) {
   return m ? m[1] : "";
 }
 
-function parseTableSource(html) {
-  const text = htmlToText(html);
-
-  const rowReg = /山东\s+(\d+\.\d{1,2})\s+(\d+\.\d{1,2})\s+(\d+\.\d{1,2})\s+(\d+\.\d{1,2})/;
-  const m = text.match(rowReg);
-
-  if (!m) return null;
-
-  return {
-    oil92: m[1],
-    oil95: m[2],
-    oil98: m[3],
-    oil0: m[4],
-    updateTime: parseDate(text)
-  };
-}
-
 function parseTextSource(html) {
   const text = htmlToText(html);
 
@@ -212,11 +184,6 @@ function parseTextSource(html) {
 
 function parseOilData(resp) {
   if (!resp || !resp.ok || !resp.body) return null;
-
-  if (resp.source.type === "table") {
-    return parseTableSource(resp.body);
-  }
-
   return parseTextSource(resp.body);
 }
 
@@ -278,7 +245,7 @@ function buildPlain(data, sourceName) {
   if (data.oil0) lines.push(`0号柴油：¥${data.oil0} / 升`);
 
   lines.push("");
-  lines.push("说明：这是山东省油价指导价，各加油站可能有优惠或浮动，请以实际油站挂牌价为准。");
+  lines.push("说明：这是山东威海油价指导价，各加油站可能有优惠或浮动，请以实际油站挂牌价为准。");
 
   return lines.join("\n");
 }
@@ -350,18 +317,18 @@ async function main() {
 
     console.log(plain);
 
-    notify("", "", plain);
+    notify(CONFIG.TITLE, "", plain);
     done(plain);
     return;
   }
 
   const msg =
-    "山东油价获取失败\n\n" +
+    "威海油价获取失败\n\n" +
     failed.join("\n") +
     "\n\n可能原因：网页结构变化、网络访问失败或源站暂时不可用。";
 
   console.log(msg);
-  notify("", "", msg);
+  notify(CONFIG.TITLE, "获取失败", msg);
   done(msg);
 }
 
@@ -369,6 +336,6 @@ main().catch(e => {
   const msg = "脚本异常：" + stringifyError(e);
 
   console.log(msg);
-  notify("", "", msg);
+  notify(CONFIG.TITLE, "脚本异常", msg);
   done(msg);
 });
