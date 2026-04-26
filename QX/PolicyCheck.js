@@ -7,7 +7,7 @@ console.log("PolicyCheck start");
  */
 
 const POLICIES = {
-  HOME: "家里内网",
+  HOME: "内网穿透",
   PROXY: "策略选择",
   GPT: "GPT",
   GEMINI: "Gemini",
