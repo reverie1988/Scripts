@@ -1,3 +1,6 @@
+console.log("PolicyCheck start");
+$notify("PolicyCheck", "脚本已启动", "正在检测策略组");
+
 /*******************************
  * Quantumult X 策略/流媒体检测
  * 根据你的策略组名称定制
