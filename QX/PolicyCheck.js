@@ -127,11 +127,13 @@ async function checkTelegram() {
 
 async function checkGPT() {
   let region = "";
+  let traceOk = false;
 
   try {
     const trace = await fetchWithPolicy("https://chatgpt.com/cdn-cgi/trace", POLICIES.GPT);
 
     if (trace.statusCode === 200 && trace.body) {
+      traceOk = true;
       const m = trace.body.match(/loc=([A-Z]{2})/);
       if (m && m[1]) region = m[1];
     }
@@ -139,26 +141,45 @@ async function checkGPT() {
     console.log("ChatGPT trace error: " + e);
   }
 
-  const res = await fetchWithPolicy("https://chatgpt.com/", POLICIES.GPT, {
-    redirection: false
-  });
+  try {
+    const res = await fetchWithPolicy("https://chatgpt.com/", POLICIES.GPT, {
+      redirection: false
+    });
 
-  const body = res.body || "";
+    const body = res.body || "";
 
-  if (
-    res.statusCode === 403 ||
-    res.statusCode === 451 ||
-    body.includes("unsupported_country") ||
-    body.includes("Sorry, you have been blocked")
-  ) {
-    return `<b>ChatGPT: </b>未支持${region ? ` ➟ ${flag(region)} ${region}` : ""} 🚫`;
+    // 明确的地区不支持页面
+    if (
+      body.includes("unsupported_country") ||
+      body.includes("not available in your country")
+    ) {
+      return `<b>ChatGPT: </b>地区疑似不支持${region ? ` ➟ ${flag(region)} ${region}` : ""} 🚫`;
+    }
+
+    // 200-399 直接判定可访问
+    if (res.statusCode >= 200 && res.statusCode < 400) {
+      return `<b>ChatGPT: </b>可访问${region ? ` ➟ ${flag(region)} ${region}` : ""} 🎉`;
+    }
+
+    // 403 / 451 很多时候是 Cloudflare / WAF / 未登录页，不一定代表 GPT 不能用
+    if ((res.statusCode === 403 || res.statusCode === 451) && traceOk) {
+      return `<b>ChatGPT: </b>可访问${region ? ` ➟ ${flag(region)} ${region}` : ""} ⚠️`;
+    }
+
+    // trace 能通，也认为链路可用
+    if (traceOk) {
+      return `<b>ChatGPT: </b>可访问${region ? ` ➟ ${flag(region)} ${region}` : ""} 🎉`;
+    }
+
+    return `<b>ChatGPT: </b>异常 ➟ HTTP ${res.statusCode} ❗️`;
+
+  } catch (e) {
+    if (traceOk) {
+      return `<b>ChatGPT: </b>可访问${region ? ` ➟ ${flag(region)} ${region}` : ""} ⚠️`;
+    }
+
+    return `<b>ChatGPT: </b>检测异常 ❗️`;
   }
-
-  if (res.statusCode >= 200 && res.statusCode < 400) {
-    return `<b>ChatGPT: </b>可访问${region ? ` ➟ ${flag(region)} ${region}` : ""} 🎉`;
-  }
-
-  return `<b>ChatGPT: </b>异常 ➟ HTTP ${res.statusCode} ❗️`;
 }
 
 async function checkGemini() {
