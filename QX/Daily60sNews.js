@@ -4,10 +4,17 @@
  *
  * 功能：
  * 1. 抓取每天 60 秒读懂世界
- * 2. 推送 15 条新闻
+ * 2. 推送 20 条新闻
  * 3. 显示日期、星期、每日金句
  * 4. 每日金句在 QX 页面中真正居中
  * 5. 普通通知文本中用空格模拟居中
+ *
+ * 新增：
+ * 1. 打印完整推送内容到 QX 日志
+ * 2. PUSH_QX 控制是否启用 QX 内部推送
+ *
+ * PUSH_QX: 1 开启 QX 内部通知
+ * PUSH_QX: 0 关闭 QX 内部通知，仅打印日志和显示任务弹窗
  ******************************/
 
 console.log("Daily60sNews start");
@@ -15,9 +22,13 @@ console.log("Daily60sNews start");
 const CONFIG = {
   API_URL: "https://60s.viki.moe/v2/60s",
   API_TEXT_URL: "https://60s.viki.moe/v2/60s?encoding=text",
-  MAX_NEWS: 15,
+
+  MAX_NEWS: 20,
   TITLE: "每天 60s 读懂世界",
-  TIMEOUT: 12000
+  TIMEOUT: 12000,
+
+  // 是否开启 QX 内部通知推送：1 开启，0 关闭
+  PUSH_QX: 1
 };
 
 function fetchData(url) {
@@ -274,7 +285,6 @@ function buildPlain(data) {
 
   const lines = [];
 
-  // lines.push("每天 60s 读懂世界");
   lines.push(`${dateText} / ${weekText}`);
   lines.push("");
 
@@ -370,8 +380,26 @@ function buildHtml(data) {
   `;
 }
 
+function printPushContent(title, subtitle, body) {
+  console.log("\n==============================");
+  console.log("QX 推送内容");
+  console.log("==============================");
+  console.log("标题：" + (title || ""));
+  console.log("副标题：" + (subtitle || ""));
+  console.log("正文：");
+  console.log(body || "");
+  console.log("==============================\n");
+}
+
 function notify(title, subtitle, body) {
   try {
+    printPushContent(title, subtitle, body);
+
+    if (Number(CONFIG.PUSH_QX) !== 1) {
+      console.log("QX 内部通知推送已关闭，仅打印日志，不发送 $notify。");
+      return;
+    }
+
     $notify(title, subtitle, body);
   } catch (e) {
     console.log("notify error: " + e);
@@ -415,15 +443,14 @@ async function main() {
     const msg = "每日新闻获取失败，可能是接口暂未更新、网络异常或 API 无法访问。";
 
     console.log(msg);
-    notify("每天 60s 读懂世界", "获取失败", msg);
-    done("每天 60s 读懂世界", msg, `<p>${escapeHtml(msg)}</p>`);
+    notify(CONFIG.TITLE, "获取失败", msg);
+    done(CONFIG.TITLE, msg, `<p>${escapeHtml(msg)}</p>`);
 
     return;
   }
 
   const plain = buildPlain(result);
   const html = buildHtml(result);
-
 
   notify(CONFIG.TITLE, "", plain);
 
@@ -436,6 +463,6 @@ main().catch(e => {
   const msg = "脚本异常：" + stringifyError(e);
 
   console.log(msg);
-  notify("每天 60s 读懂世界", "脚本异常", msg);
-  done("每天 60s 读懂世界", msg, `<p>${escapeHtml(msg)}</p>`);
+  notify(CONFIG.TITLE, "脚本异常", msg);
+  done(CONFIG.TITLE, msg, `<p>${escapeHtml(msg)}</p>`);
 });
