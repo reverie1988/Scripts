@@ -14,6 +14,13 @@
  *        宏观经济
  *
  * 1、央视新闻：......
+ *
+ * 日志：
+ * 每次 QX 推送前，打印完整推送内容
+ *
+ * 开关：
+ * PUSH_QX: 1 开启 QX 内部通知推送
+ * PUSH_QX: 0 关闭 QX 内部通知推送，仅打印日志和显示任务弹窗
  ******************************/
 
 console.log("DailyFinanceNews start");
@@ -25,6 +32,9 @@ const CONFIG = {
   DEFAULT_SOURCE: "财经早餐",
 
   TIMEOUT: 15000,
+
+  // 是否开启 QX 内部通知推送：1 开启，0 关闭
+  PUSH_QX: 1,
 
   // 每个分组最多保留多少条
   MAX_SECTION_ITEMS: 20,
@@ -351,10 +361,8 @@ function normalizeLine(line) {
     .replace(/^No\.\d+$/i, "")
     .trim();
 
-  // 保留摘要前面的 ►
   line = line.replace(/^►\s*/, "► ");
 
-  // 把英文冒号统一成中文冒号
   line = line.replace(/^([^：:\s]{1,20}):/, "$1：");
 
   return line;
@@ -494,7 +502,6 @@ function splitSourceArticle(text) {
       continue;
     }
 
-    // 普通续行
     if (currentItem) {
       currentItem += line.match(/^[，。；、,.!?！？]/) ? line : line;
     } else {
@@ -671,8 +678,26 @@ function buildHtml(data) {
   `;
 }
 
+function printPushContent(title, subtitle, body) {
+  console.log("\n==============================");
+  console.log("QX 推送内容");
+  console.log("==============================");
+  console.log("标题：" + (title || ""));
+  console.log("副标题：" + (subtitle || ""));
+  console.log("正文：");
+  console.log(body || "");
+  console.log("==============================\n");
+}
+
 function notify(title, subtitle, body) {
   try {
+    printPushContent(title, subtitle, body);
+
+    if (Number(CONFIG.PUSH_QX) !== 1) {
+      console.log("QX 内部通知推送已关闭，仅打印日志，不发送 $notify。");
+      return;
+    }
+
     $notify(title, subtitle, body);
   } catch (e) {
     console.log("notify error: " + e);
@@ -728,7 +753,6 @@ async function main() {
   const plain = buildPlain(data);
   const html = buildHtml(data);
 
-  // 通知标题不显示时间
   notify(CONFIG.TITLE, "", plain);
 
   console.log("DailyFinanceNews done");
